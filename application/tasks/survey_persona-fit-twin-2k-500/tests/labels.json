@@ -1,0 +1,19 @@
+{
+  "dataset": "twin-2k-500",
+  "decisionType": "multinomial",
+  "metricKey": "answer",
+  "positiveOption": null,
+  "options": [],
+  "optionSets": {
+    "q001": [
+      "o1",
+      "o2"
+    ]
+  },
+  "labels": {
+    "twin-2k-500-99001": {
+      "rowId": "99001-QID192",
+      "outcome": "o1"
+    }
+  }
+}

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import tempfile
@@ -45,7 +46,38 @@ def _eval_persona(persona: object) -> EvalPersona:
     )
 
 
-def _load_survey_content(*, task_path: str | None, instrument_path: str | None):
+def _trial_task_path(trial_dir: Path | None) -> str | None:
+    """Task path Harbor recorded for this trial, when it is a survey task on disk.
+
+    Lets one job run many survey tasks (one questionnaire each) instead of the
+    single task named by ``MATRIX_SURVEY_TASK_PATH``.
+    """
+    if trial_dir is None:
+        return None
+    config_path = trial_dir / "config.json"
+    if not config_path.is_file():
+        return None
+    try:
+        config = json.loads(config_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    raw = ((config.get("task") or {}) if isinstance(config, dict) else {}).get("path")
+    if not raw:
+        return None
+    path = Path(str(raw)).expanduser()
+    if not path.is_absolute():
+        path = _repo_root() / path
+    if not (path / "input" / "questionnaire.yaml").is_file():
+        return None
+    return str(path)
+
+
+def _load_survey_content(
+    *,
+    task_path: str | None,
+    instrument_path: str | None,
+    trial_dir: Path | None = None,
+):
     from backend.service.survey_types import SurveyInstrument
 
     if instrument_path:
@@ -55,7 +87,12 @@ def _load_survey_content(*, task_path: str | None, instrument_path: str | None):
             if isinstance(payload, dict):
                 instrument = SurveyInstrument.from_dict(payload)
                 return instrument, None
-    resolved_task_path = str(task_path or os.environ.get("MATRIX_SURVEY_TASK_PATH") or "").strip()
+    resolved_task_path = str(
+        task_path
+        or _trial_task_path(trial_dir)
+        or os.environ.get("MATRIX_SURVEY_TASK_PATH")
+        or ""
+    ).strip()
     if resolved_task_path:
         content = load_survey_task_content_for_task_path(
             resolved_task_path,
@@ -154,14 +191,15 @@ class PersonaJsonSurvey(PersonaMixin, BaseAgent):
     ) -> None:
         del instruction
         await self._prepare_persona_trial(environment)
+        trial_dir = self.logs_dir.parent
         instrument, content = _load_survey_content(
             task_path=self._survey_task_path,
             instrument_path=self._survey_instrument_path,
+            trial_dir=trial_dir,
         )
         persona = _eval_persona(self._persona)
         persona_yaml_path = str(self._persona.persona_path)
         created_at = _utc_now()
-        trial_dir = self.logs_dir.parent
         job_dir = trial_dir.parent
         event_writer = TrialEventWriter.for_trial_dir(trial_dir)
         if content is None:
@@ -170,6 +208,12 @@ class PersonaJsonSurvey(PersonaMixin, BaseAgent):
                 repo_root=_repo_root(),
                 fallback_questionnaire=instrument,
             )
+        if content is not None:
+            from harbor.utils.templating import apply_stimulus_params
+
+            # experiment.json injects the assigned arm as MATRIX_PARAM_<FACTOR>.
+            content.instruction_markdown = apply_stimulus_params(content.instruction_markdown)
+            content.context_markdown = apply_stimulus_params(content.context_markdown)
         instruction_md = (
             content.combined_markdown().strip()
             if content is not None and content.combined_markdown().strip()
@@ -205,7 +249,10 @@ class PersonaJsonSurvey(PersonaMixin, BaseAgent):
         survey_config = SurveyEvalConfig(
             persona_model=resolve_persona_model(model_name=self.model_name),
         )
-        result = InprocessSurveyEvalRunner()(
+        # The provider client is blocking; a worker thread keeps the event loop
+        # free so n_concurrent_trials actually overlap.
+        result = await asyncio.to_thread(
+            InprocessSurveyEvalRunner(),
             persona,
             instrument,
             config=survey_config,
@@ -213,6 +260,7 @@ class PersonaJsonSurvey(PersonaMixin, BaseAgent):
             on_event=on_event,
             persona_yaml_path=persona_yaml_path,
             job_dir=job_dir,
+            task_content=content,
         )
         _apply_usage_to_context(context, result.usage)
         payload = _survey_result_payload(result)

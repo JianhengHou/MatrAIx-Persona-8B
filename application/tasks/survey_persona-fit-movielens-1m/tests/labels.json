@@ -1,0 +1,20 @@
+{
+  "dataset": "movielens-1m",
+  "decisionType": "rating",
+  "metricKey": "stars",
+  "positiveOption": null,
+  "options": [],
+  "optionSets": {
+    "q001": []
+  },
+  "ratingRange": [
+    1,
+    5
+  ],
+  "labels": {
+    "movielens-1m-99001": {
+      "rowId": "99001-1",
+      "outcome": 4
+    }
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "dataset": "immigration-conjoint",
+  "decisionType": "pair",
+  "metricKey": "chose_first",
+  "positiveOption": "a",
+  "options": [],
+  "optionSets": {
+    "q001": [
+      "a",
+      "b"
+    ]
+  },
+  "labels": {
+    "immigration-conjoint-99001": {
+      "rowId": "99001-1",
+      "outcome": "a",
+      "weight": 1.0
+    }
+  }
+}

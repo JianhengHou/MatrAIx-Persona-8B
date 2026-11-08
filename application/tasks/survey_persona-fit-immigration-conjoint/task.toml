@@ -1,0 +1,25 @@
+version = "1.0"
+artifacts = [ "/app/output",]
+
+[task]
+name = "application/persona-fit-immigration-conjoint"
+
+[metadata]
+difficulty = "easy"
+type = "survey"
+domain = "politics"
+tags = [ "persona-fit", "real-person", "immigration-conjoint", "fit-a", "stated-preference" ]
+
+[verifier]
+timeout_sec = 120.0
+
+[agent]
+timeout_sec = 1800.0
+
+[environment]
+definition = "application/shared-survey-form"
+build_timeout_sec = 600.0
+cpus = 1
+memory_mb = 2048
+storage_mb = 10240
+gpus = 0

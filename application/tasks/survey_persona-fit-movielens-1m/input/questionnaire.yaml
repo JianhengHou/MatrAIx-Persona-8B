@@ -1,0 +1,12 @@
+schemaVersion: '1.0'
+id: persona_fit_movielens_1m
+title: MovieLens 1M ratings
+description: Persona-fit decision task (MovieLens 1M ratings). Answer as yourself.
+questions:
+- id: q001
+  prompt: 'Movie 1: how many stars (1-5) do you give Example Comedy?'
+  type: likert
+  construct: q001
+  required: true
+  minValue: 1
+  maxValue: 5

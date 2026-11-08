@@ -34,17 +34,22 @@ def persona_system_prompt(persona: Persona, *, persona_yaml_path: str) -> str:
     return persona_body
 
 
-def build_survey_task_prompt(*, instrument: SurveyInstrument) -> str:
+def build_survey_task_prompt(
+    *,
+    instrument: SurveyInstrument,
+    task_content: SurveyTaskContent | None = None,
+) -> str:
     from playground.harbor.playground import _repo_root
     from playground.survey_task_content import (
         load_survey_task_content_for_questionnaire_id,
     )
 
-    task_content = load_survey_task_content_for_questionnaire_id(
-        instrument.id,
-        repo_root=_repo_root(),
-        fallback_questionnaire=instrument,
-    )
+    if task_content is None:
+        task_content = load_survey_task_content_for_questionnaire_id(
+            instrument.id,
+            repo_root=_repo_root(),
+            fallback_questionnaire=instrument,
+        )
     if task_content is None:
         task_content = SurveyTaskContent(
             title=instrument.title,
@@ -57,8 +62,9 @@ def build_survey_task_prompt(*, instrument: SurveyInstrument) -> str:
     lines: list[str] = []
     if task_content.instruction_markdown.strip():
         lines.extend(["## Task instruction", "", task_content.instruction_markdown.strip(), ""])
-    if task_content.context_markdown.strip():
-        lines.extend(["## Context", "", task_content.context_markdown.strip(), ""])
+    context_markdown = task_content.context_markdown.strip()
+    if context_markdown:
+        lines.extend(["## Context", "", context_markdown, ""])
     if task_content.questionnaire_markdown.strip():
         lines.extend(["## Questionnaire", "", task_content.questionnaire_markdown.strip(), ""])
     # Answer envelope is derived from questionnaire flags; keep a short derived
@@ -87,6 +93,7 @@ class InprocessSurveyEvalRunner:
         job_dir: Optional[Any] = None,
         client: Any | None = None,
         client_factory: Optional[Callable[[str], Any]] = None,
+        task_content: SurveyTaskContent | None = None,
     ) -> SurveyEvalResult:
         config = config or SurveyEvalConfig()
 
@@ -94,7 +101,7 @@ class InprocessSurveyEvalRunner:
             if on_event is not None:
                 on_event(event)
 
-        task_prompt = build_survey_task_prompt(instrument=instrument)
+        task_prompt = build_survey_task_prompt(instrument=instrument, task_content=task_content)
         persona_prompt = persona_system_prompt(
             persona, persona_yaml_path=persona_yaml_path
         )

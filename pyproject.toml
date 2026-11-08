@@ -27,6 +27,7 @@ dependencies = [
     "toml>=0.10.2",
     "typer>=0.16.0",
     "uvicorn>=0.38.0",
+    "truststore>=0.10.5",
 ]
 
 [project.scripts]

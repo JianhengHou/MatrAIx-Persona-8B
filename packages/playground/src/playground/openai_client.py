@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+import ssl
 from typing import Any, Dict, Optional, Protocol
 
 from playground.llm_usage import JsonCompletion, usage_from_openai_completion
@@ -25,16 +26,31 @@ def coerce_json(text: str) -> Dict[str, Any]:
     raise ValueError("could not parse JSON from model output: {!r}".format(text[:200]))
 
 
+def _http_client():
+    """OpenAI HTTP client that also trusts the machine's Zscaler root.
+
+    certifi does not include a corporate TLS intercept CA. macOS does, in the
+    System keychain, which is why curl works and the OpenAI SDK does not.
+    """
+    import httpx
+
+    try:
+        import truststore
+    except ImportError:
+        return None
+    return httpx.Client(verify=truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT))
+
+
 def openai_model_supports_custom_temperature(model: str) -> bool:
     """Whether Chat Completions / Messages accepts a non-default ``temperature``.
 
-    GPT-5 family models currently only allow the API default (1); sending
-    ``0.1`` / ``0.7`` returns HTTP 400. Claude Opus 4.7+ (and Bedrock Opus)
+    GPT-5 and GPT-6 family models currently only allow the API default (1);
+    sending ``0.1`` / ``0.7`` returns HTTP 400. Claude Opus 4.7+ (and Bedrock Opus)
     similarly reject an explicit non-default temperature.
     """
     lowered = (model or "").strip().lower()
     bare = lowered.rsplit("/", 1)[-1] if "/" in lowered else lowered
-    if bare.startswith("gpt-5"):
+    if bare.startswith(("gpt-5", "gpt-6")):
         return False
     opus = re.search(r"opus-4-(\d+)", lowered)
     if opus is not None and int(opus.group(1)) >= 7:
@@ -74,6 +90,9 @@ class OpenAIChatClient:
                 client_kwargs["api_key"] = api_key
             if base_url is not None:
                 client_kwargs["base_url"] = base_url
+            http_client = _http_client()
+            if http_client is not None:
+                client_kwargs["http_client"] = http_client
             client = OpenAI(**client_kwargs)
         self._client = client
 
@@ -92,6 +111,14 @@ class OpenAIChatClient:
         }
         if openai_model_supports_custom_temperature(self.model):
             kwargs["temperature"] = self.temperature
+        if self.provider == "zai":
+            # glm-5.3 cannot disable thinking. Leave room for the 80-answer form
+            # after the reasoning it always produces.
+            kwargs["max_tokens"] = 65536
+            # GLM-5.3 rejects thinking.type=disabled. The default effort is max,
+            # which spends the request budget before the survey answers exist.
+            kwargs["reasoning_effort"] = "low"
+            kwargs["extra_body"] = {"thinking": {"type": "enabled"}}
         completion = self._client.chat.completions.create(**kwargs)
         data = coerce_json(completion.choices[0].message.content)
         usage = usage_from_openai_completion(

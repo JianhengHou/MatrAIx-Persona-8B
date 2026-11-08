@@ -1,0 +1,16 @@
+schemaVersion: '1.0'
+id: persona_fit_bansak_asylum
+title: Bansak, Hainmueller & Hangartner asylum conjoint
+description: Persona-fit decision task (Bansak, Hainmueller & Hangartner asylum conjoint).
+  Answer as yourself.
+questions:
+- id: q001
+  prompt: 'Paar 1: Welchem der beiden Antragsteller soll Asyl gewährt werden?'
+  type: single_choice
+  construct: q001
+  required: true
+  options:
+  - id: a
+    label: Antragsteller 1
+  - id: b
+    label: Antragsteller 2

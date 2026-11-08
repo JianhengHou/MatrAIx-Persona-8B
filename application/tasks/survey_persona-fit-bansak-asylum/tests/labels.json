@@ -1,0 +1,19 @@
+{
+  "dataset": "bansak-asylum",
+  "decisionType": "pair",
+  "metricKey": "chose_first",
+  "positiveOption": "a",
+  "options": [],
+  "optionSets": {
+    "q001": [
+      "a",
+      "b"
+    ]
+  },
+  "labels": {
+    "bansak-asylum-R_example": {
+      "rowId": "R_example-1",
+      "outcome": "a"
+    }
+  }
+}

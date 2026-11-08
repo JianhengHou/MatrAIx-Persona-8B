@@ -1,0 +1,13 @@
+{
+  "schemaVersion": "1.0",
+  "pool": "persona/datasets/persona-fit-eb-nerd",
+  "cohortId": "persona-fit-eb-nerd",
+  "sources": [
+    "persona-fit/eb-nerd"
+  ],
+  "dimensionFilters": {},
+  "sampling": {
+    "mode": "random",
+    "sampleSize": 20
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "schemaVersion": "1.0",
+  "pool": "persona/datasets/persona-fit-immigration-conjoint",
+  "cohortId": "persona-fit-immigration-conjoint",
+  "sources": [
+    "persona-fit/immigration-conjoint"
+  ],
+  "dimensionFilters": {},
+  "sampling": {
+    "mode": "random",
+    "sampleSize": 20
+  }
+}

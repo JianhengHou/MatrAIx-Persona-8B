@@ -1,0 +1,16 @@
+schemaVersion: '1.0'
+id: persona_fit_twin_2k_500
+title: Twin-2K-500 held-out survey items
+description: Persona-fit decision task (Twin-2K-500 held-out survey items). Answer
+  as yourself.
+questions:
+- id: q001
+  prompt: 'Choose between: (example gamble A) and (example gamble B).'
+  type: single_choice
+  construct: q001
+  required: true
+  options:
+  - id: o1
+    label: Gamble A
+  - id: o2
+    label: Gamble B

@@ -1,0 +1,19 @@
+{
+  "dataset": "eb-nerd",
+  "decisionType": "binary",
+  "metricKey": "opened",
+  "positiveOption": "yes",
+  "options": [],
+  "optionSets": {
+    "q001": [
+      "yes",
+      "no"
+    ]
+  },
+  "labels": {
+    "eb-nerd-7": {
+      "rowId": "1-101",
+      "outcome": "yes"
+    }
+  }
+}

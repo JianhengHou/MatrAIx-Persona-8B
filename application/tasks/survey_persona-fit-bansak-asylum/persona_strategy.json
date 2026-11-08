@@ -1,0 +1,13 @@
+{
+  "schemaVersion": "1.0",
+  "pool": "persona/datasets/persona-fit-bansak-asylum",
+  "cohortId": "persona-fit-bansak-asylum",
+  "sources": [
+    "persona-fit/bansak-asylum"
+  ],
+  "dimensionFilters": {},
+  "sampling": {
+    "mode": "random",
+    "sampleSize": 20
+  }
+}

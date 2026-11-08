@@ -1,0 +1,17 @@
+schemaVersion: '1.0'
+id: persona_fit_immigration_conjoint
+title: Hainmueller & Hopkins immigration conjoint
+description: Persona-fit decision task (Hainmueller & Hopkins immigration conjoint).
+  Answer as yourself.
+questions:
+- id: q001
+  prompt: 'Pair 1: which of these two immigrants should be given priority to come
+    to the United States to live?'
+  type: single_choice
+  construct: q001
+  required: true
+  options:
+  - id: a
+    label: Immigrant 1
+  - id: b
+    label: Immigrant 2

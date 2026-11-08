@@ -24,6 +24,12 @@ trial; batch reporting rolls up a cohort.
 
 Ops notes also live in [`application/tasks/README.md`](../../application/tasks/README.md).
 
+### Real-person decision datasets
+
+[persona-fit.md](persona-fit.md) turns public datasets of real decisions
+(speed dating, travel mode, e-mail campaigns, conjoints, ...) into survey
+tasks scored against the held-out decision and a persona-free control.
+
 ## Run
 
 | How | Where |

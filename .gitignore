@@ -298,6 +298,13 @@ application/tasks/*/verifier/
 
 configs/jobs/_generated/
 
+# Persona-fit generated personas, per-decision tasks, and job shards. Source data
+# lives under /data/persona_fit/ (several licenses forbid redistribution).
+persona/datasets/persona-fit-*/
+application/tasks/_generated/
+experiments/tasks/_generated/
+configs/jobs/persona-fit/
+
 # Local planning notes (not for git)
 plan.md
 user-simulator-chat-design.md

@@ -1,0 +1,13 @@
+{
+  "schemaVersion": "1.0",
+  "pool": "persona/datasets/persona-fit-movielens-1m",
+  "cohortId": "persona-fit-movielens-1m",
+  "sources": [
+    "persona-fit/movielens-1m"
+  ],
+  "dimensionFilters": {},
+  "sampling": {
+    "mode": "random",
+    "sampleSize": 20
+  }
+}

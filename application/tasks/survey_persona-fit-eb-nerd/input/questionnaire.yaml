@@ -1,0 +1,16 @@
+schemaVersion: '1.0'
+id: persona_fit_eb_nerd
+title: EB-NeRD news clicks
+description: Persona-fit decision task (EB-NeRD news clicks). Answer as yourself.
+questions:
+- id: q001
+  prompt: 'Artikel 1, sektion sport: Danmark vinder — Sen aften i Parken. Ville du
+    åbne den?'
+  type: single_choice
+  construct: q001
+  required: true
+  options:
+  - id: 'yes'
+    label: Ja, jeg ville åbne den
+  - id: 'no'
+    label: Nej, jeg ville ikke
