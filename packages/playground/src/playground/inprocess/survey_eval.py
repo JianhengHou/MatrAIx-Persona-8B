@@ -25,6 +25,10 @@ from playground.types import Persona
 from playground.user_sim.prompt import render_persona_block
 
 
+class SurveyAnswerError(ValueError):
+    """The model's answers do not fit the questionnaire, so there is no result to score."""
+
+
 def persona_system_prompt(persona: Persona, *, persona_yaml_path: str) -> str:
     persona_body = render_persona_block(
         persona, persona_yaml_path=persona_yaml_path
@@ -132,6 +136,7 @@ class InprocessSurveyEvalRunner:
         if usage is not None:
             record_trial_cost(job_dir, usage.cost_usd)
             emit({"type": "usage", "usage": usage.to_dict()})
+        emit({"type": "model_output", "data": raw})
         answers = _normalize_answers(raw.get("answers"), instrument)
         metrics = _metrics(answers, instrument)
         trajectory = _build_trajectory(instrument, answers, created_at)
@@ -244,10 +249,16 @@ def _build_trajectory(
 
 
 def _normalize_answers(raw_answers: Any, instrument: SurveyInstrument) -> List[SurveyAnswer]:
+    """Answers in questionnaire form, or SurveyAnswerError naming every problem.
+
+    A value that is not a valid answer is never replaced: a substitute would be
+    scored as if the persona had chosen it.
+    """
+    if not isinstance(raw_answers, list):
+        raise SurveyAnswerError("model output has no answers list: {!r}".format(raw_answers)[:300])
     by_id = {question.id: question for question in instrument.questions}
     answers: List[SurveyAnswer] = []
-    if not isinstance(raw_answers, list):
-        raw_answers = []
+    problems: List[str] = []
     seen = set()
     for raw in raw_answers:
         if not isinstance(raw, dict):
@@ -256,48 +267,61 @@ def _normalize_answers(raw_answers: Any, instrument: SurveyInstrument) -> List[S
         question = by_id.get(answer.question_id)
         if question is None or answer.question_id in seen:
             continue
-        answer.value = _normalize_value(answer.value, question)
+        seen.add(answer.question_id)
+        try:
+            answer.value = _normalize_value(answer.value, question)
+        except ValueError as exc:
+            problems.append("{}: {}".format(question.id, exc))
+            continue
         if not question.resolves_ask_rationale(instrument):
             answer.rationale = ""
         if not question.resolves_ask_confidence(instrument):
             answer.confidence = None
         answers.append(answer)
-        seen.add(answer.question_id)
-    for question in instrument.questions:
-        if question.required and question.id not in seen:
-            answers.append(
-                SurveyAnswer(
-                    question_id=question.id,
-                    value=_default_value(question),
-                    rationale=(
-                        "No persona-specific answer was produced, so a neutral answer was used."
-                        if question.resolves_ask_rationale(instrument)
-                        else ""
-                    ),
-                    confidence=(
-                        0.0 if question.resolves_ask_confidence(instrument) else None
-                    ),
-                )
-            )
+    missing = [question.id for question in instrument.questions if question.required and question.id not in seen]
+    if missing:
+        problems.append("no answer for {}".format(", ".join(missing)))
+    if problems:
+        raise SurveyAnswerError("invalid survey answers: " + "; ".join(problems))
     return answers
+
+
+def _match_option(value: Any, question: SurveyQuestion) -> str:
+    """The option id the model meant: the id itself, the id in another case, or the option's label."""
+    text = str(value).strip()
+    if text in question.options:
+        return text
+    folded = text.casefold()
+    by_id = [option for option in question.options if option.casefold() == folded]
+    if len(by_id) == 1:
+        return by_id[0]
+    by_label = [
+        option.id for option in question.option_details
+        if option.label and option.label.strip().casefold() == folded
+    ]
+    if len(by_label) == 1:
+        return by_label[0]
+    raise ValueError("{!r} is not one of the options {}".format(value, question.options))
 
 
 def _normalize_value(value: Any, question: SurveyQuestion) -> Any:
     if question.type == "likert":
+        low = question.min_value or 1
+        high = question.max_value or 5
         try:
-            number = int(round(float(value)))
+            number = float(value)
         except (TypeError, ValueError):
-            low = question.min_value or 1
-            high = question.max_value or 5
-            number = int(round((low + high) / 2))
-        return max(question.min_value or 1, min(question.max_value or 5, number))
+            raise ValueError("{!r} is not a number from {} to {}".format(value, low, high)) from None
+        if not number.is_integer() or not low <= number <= high:
+            raise ValueError("{!r} is not a whole number from {} to {}".format(value, low, high))
+        return int(number)
     if question.type == "single_choice":
-        text = str(value)
-        return text if text in question.options else question.options[0]
+        return _match_option(value, question)
     if question.type == "multi_choice":
         values = value if isinstance(value, list) else [value]
-        selected = [str(item) for item in values if str(item) in question.options]
-        return selected or [question.options[0]]
+        if not values:
+            raise ValueError("no option selected")
+        return [_match_option(item, question) for item in values]
     return str(value or "").strip()
 
 

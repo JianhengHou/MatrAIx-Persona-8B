@@ -200,7 +200,8 @@ table.
 - Every simulated-persona number here is one model, GLM 5.3.
 - The conjoint ceilings are inferred from a regression that saw other people's
   choices. Neither file repeats a pair for the same person.
-- A single-choice answer outside the option list is silently replaced with the
-  first option before scoring (`yes` in EB-NeRD, `a` in the conjoints). The raw
-  model output is not stored, so these runs cannot show whether that happened.
-  See "Known issues" in `handover.md`.
+- These runs used the earlier survey code, which replaced a single-choice answer
+  outside the option list with the first option (`yes` in EB-NeRD, `a` in the
+  conjoints) and did not store the raw model output, so they cannot show
+  whether that happened. The code now fails such a trial instead and keeps the
+  raw output; see "Known issues" in `handover.md`.

@@ -151,7 +151,7 @@ provider's model list; ids below are only the ones checked here.
 
 | Family | Recommended `--model` | Checked here (Nov 2026) | Notes |
 |--------|-----------------------|--------------------------|-------|
-| Anthropic | `anthropic/<id>` | Not run, no key | Native Messages API, not JSON mode: the prompt asks for JSON only. Output capped at 16,384 tokens. Temperature is left out only for ids matching `opus-4-7` and later 4.x; any other id, including a newer naming such as `opus-5`, is sent 0.7. If the API rejects that, the smoke test shows it. |
+| Anthropic | `anthropic/<id>` | Not run, no key | Native Messages API, not JSON mode: the prompt asks for JSON only. Output capped at 16,384 tokens. No temperature is sent to Opus 4.7 and later, including `opus-5` and its point releases; other Claude models are sent 0.7. |
 | Gemini | `gemini/<id>` | Not run, no key | Google's OpenAI-compatible endpoint, with JSON mode. `google/<id>` is the same route. |
 | OpenAI | `openai/<id>`, e.g. `openai/gpt-6-sol` | Request reached OpenAI and the id was accepted; the test account had no credit, so no answers | No temperature is sent to `gpt-5*` and `gpt-6*`. The o-series (`o3`, `o4`) also rejects a custom temperature, and the code does not yet omit it for them, so they fail until it does. |
 | GLM | `zai/glm-5.3` | Reference run, all five datasets | `zai/` is special-cased: 65,536 output tokens, thinking on at low effort. The same model through `dashscope/` or `openrouter/` gets neither setting; that route was not tested. |
@@ -165,7 +165,7 @@ To keep the comparison fair:
   providers can differ in quantization, defaults and context. Report
   `dashscope/kimi-k3`, not "Kimi K3".
 - **Temperature is not identical across families.** Every model is sent 0.7
-  except `gpt-5*`, `gpt-6*` and Claude `opus-4-7` and later 4.x, which run at
+  except `gpt-5*`, `gpt-6*` and Claude Opus 4.7 and later, which run at
   their provider's default. Say so when comparing.
 - **One model per shell.** `OPENAI_BASE_URL` is global. If Kimi goes through
   `openai/` with Moonshot's URL, run OpenAI models in a different shell or
@@ -344,13 +344,14 @@ redistribution.
 
 ## 9. Known issues
 
-- **An invalid answer is silently replaced.** If the model returns a
-  single-choice value that is not one of the options, the shared survey code
-  replaces it with the first option before scoring: `yes` in EB-NeRD, `a` in
-  the conjoints, the first option in Twin-2K. A missing answer is filled the
-  same way. The raw model output is not stored, so this cannot be detected
-  after the fact. A model that formats answers loosely will look biased
-  towards `yes` and `a`.
+- **An answer that does not fit fails the trial.** A choice is accepted as the
+  option id, the id in another case (`YES`), or the option's exact label. A
+  rating must be a whole number in range. Anything else, or a missing answer,
+  fails the whole trial with `SurveyAnswerError` naming the question and the
+  value; nothing is substituted. `run` retries failed trials, so a model that
+  keeps failing the same people shows up as failures that do not go away. Each
+  trial's `events.jsonl` keeps the model's raw output as a `model_output`
+  event, so you can read what it actually answered.
 - **Twin-2K is mostly recall.** Every scored item was asked in an earlier
   sitting, and the earlier answers are in the persona. Copying them scores
   0.761, about what GLM scores.
