@@ -153,7 +153,7 @@ class ImmigrationConjoint(DatasetAdapter):
     positive_option = "a"
     metric_key = "chose_first"
     # People, not pairs. Each person answers all five pairs in one job.
-    default_sample_rows = 20
+    default_sample_rows = 100
     instruction_md = (
         "# Immigration admission choice\n\n"
         "It is January 2012.\n\n"

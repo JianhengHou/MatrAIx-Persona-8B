@@ -148,45 +148,83 @@ pf score --dataset immigration-conjoint
 ```
 
 You should see two `Rewards:` lines and a score table with `Valid answers` 10.
-Then remove that smoke run before the real one (see section 6).
+This is not the standard sample. Remove it before the real run (section 7).
 
-## 4. How much each dataset costs
+## 4. The fixed sample
 
-One person is one trial is one model call. The default in the code is 20
-people per dataset; the reference run used 100, so always pass `--sample-rows`.
+Everyone runs the same people and the same items. Do not pass `--sample-rows`;
+the defaults below are the standard sample.
 
-| Dataset | People available | Reference run | Questions per trial, median (max) | Input tokens per trial, median (max) | Output tokens per trial, median | Seconds per trial on GLM, median (max) | Input tokens for 100 people |
-|---------|------------------|---------------|------------------------------------|---------------------------------------|----------------------------------|-----------------------------------------|------------------------------|
-| `twin-2k-500` | 2,058 | 100 people, 8,224 items | 84 (84) | 37k (59k) | 1.1k | 17 (534) | 3.6M |
-| `immigration-conjoint` | 1,404 | 100 people, 500 pairs | 5 (5) | 2.1k (2.1k) | 200 | 7 (20) | 0.21M |
-| `movielens-1m` | 6,040 | 100 people, 3,064 ratings | 17 (209) | 2.6k (18k) | 220 | 6 (74) | about 0.3M |
-| `bansak-asylum` | 18,030 | 100 people, 500 pairs | 5 (5) | 2.1k (2.7k) | 200 | 9 (24) | 0.21M |
-| `eb-nerd` | 635 | 100 people, 1,098 articles | 8 (54) | 24k (76k) | 180 | 8 (49) | 2.9M |
+| Dataset | People | Items scored | Sample fingerprint |
+|---------|--------|--------------|--------------------|
+| `twin-2k-500` | 100 of 2,058 | 8,224 survey items | `825d306854636041` |
+| `immigration-conjoint` | 100 of 1,404 | 500 pairs | `14a095ebd5536c16` |
+| `movielens-1m` | 100 of 6,040 | 3,064 ratings | `6af1635699f608c2` |
+| `bansak-asylum` | 3,606 of 18,030 (20%) | 18,030 pairs | `775b2ee159729cfc` |
+| `eb-nerd` | 100 of 635 | 1,098 articles | `b41c7940914713cb` |
 
-Output tokens exclude hidden reasoning on providers that do not report it.
-All five at 100 people is about 7.2M input tokens and 500 calls. The people
-are always the same: a seeded hash of the person id picks them, so
-`--sample-rows 200` keeps the first 100 and adds the next 100. EB-NeRD cannot
-go above 635, because only readers with a known age or gender can be a
-persona.
+How the people are picked: each person id is hashed with the fixed seed
+`20261104` (SHA-256 of `20261104:sample:<person id>`), people are sorted by that
+hash, and the first N are taken. Nothing depends on the machine, the model, or
+the run order, so the same raw files always give the same people. A larger N
+keeps everyone in a smaller N: the Bansak 3,606 contain the 100 of the GLM
+reference run.
 
-## 5. Run
+The fingerprint is a hash of every scored item id. `pf all` and `pf prepare`
+print it on the first line for each dataset:
+
+```
+bansak-asylum: {"rows": 90150, ..., "scoredPersons": 3606, "sampleFingerprint": "775b2ee159729cfc"}
+```
+
+**If your fingerprint differs from the table, stop.** It means different raw
+files (check the sha256 list in section 2), a different `--sample-rows`, or
+changed adapter code. Results from a different sample cannot be compared.
+
+Why these sizes: 100 people is the size of the GLM reference run and is
+enough for an overall score. On the conjoints, five pairs per person, the 95%
+interval on accuracy is about ±5 points; it is tighter where each person
+answers more items.
+Bansak is cheap per person and spans 15 countries, so it takes a fifth of the
+voters: 213 to 258 per country, enough to compare countries (about ±3 points
+each) and about ±1 point overall. EB-NeRD cannot go above 635, because only
+readers with a known age or gender can be a persona.
+
+## 5. How much each dataset costs
+
+One person is one trial is one model call.
+
+| Dataset | Trials | Questions per trial, median (max) | Input tokens per trial, median (max) | Output tokens per trial, median | Seconds per trial on GLM, median (max) | Input tokens, whole sample |
+|---------|--------|------------------------------------|---------------------------------------|----------------------------------|-----------------------------------------|----------------------------|
+| `twin-2k-500` | 100 | 84 (84) | 37k (59k) | 1.1k | 17 (534) | 3.6M |
+| `immigration-conjoint` | 100 | 5 (5) | 2.1k (2.1k) | 200 | 7 (20) | 0.21M |
+| `movielens-1m` | 100 | 17 (209) | 2.6k (18k) | 220 | 6 (74) | about 0.3M |
+| `bansak-asylum` | 3,606 | 5 (5) | 2.1k (2.7k) | 200 | 9 (24) | about 7.6M |
+| `eb-nerd` | 100 | 8 (54) | 24k (76k) | 180 | 8 (49) | 2.9M |
+
+Per-trial numbers are from the GLM reference run (100 people each). Output
+tokens exclude hidden reasoning on providers that do not report it. The whole
+standard sample is 4,006 calls and about 14.6M input tokens; Bansak is half of
+the tokens and almost all of the calls.
+
+## 6. Run
 
 ```bash
 MODEL=openai/your-model   # your provider and model
-N=100                     # people per dataset
 P=20                      # parallel trials, see below
 
 for d in twin-2k-500 immigration-conjoint movielens-1m bansak-asylum eb-nerd; do
-  pf all   --dataset $d --sample-rows $N --model $MODEL --max-agents 1 --concurrent 1
+  pf all   --dataset $d --model $MODEL --max-agents 1 --concurrent 1
   pf run   --dataset $d --mode full --parallel $P
   pf score --dataset $d
 done
 ```
 
-- `all` prepares the sample, writes one persona per person, one task per
-  person, and one job shard per person. Keep `--max-agents 1 --concurrent 1`:
-  that is one person per shard, which is what `--parallel` spreads out.
+- `all` draws the standard sample, writes one persona per person, one task per
+  person, and one job shard per person. Check the fingerprint it prints
+  against section 4 before letting `run` start. Keep
+  `--max-agents 1 --concurrent 1`: that is one person per shard, which is
+  what `--parallel` spreads out.
 - `run` runs every pending shard. Run it again after a crash or a rate-limit
   burst: finished trials are kept, failed ones are deleted and redone. It
   exits non-zero while anything failed.
@@ -216,10 +254,12 @@ lower `P` for those two and run `run` again. A self-hosted server is limited
 by its own batch size instead; start at the server's maximum concurrent
 sequences.
 
-With GLM at `P = 20`, Bansak's 100 people took 66 seconds and EB-NeRD's took
-100 seconds. A single slow trial sets the tail.
+With GLM at `P = 20`, 100 Bansak people took 66 seconds and EB-NeRD's 100 took
+100 seconds, so the 3,606 Bansak people take about 30 minutes at the same
+speed. A single slow trial sets the tail. Bansak's 3,606 shards also mean
+3,606 persona files, task folders and job folders on disk, about 650 MB.
 
-## 6. Switching models
+## 7. Switching models
 
 Job folders are named by dataset, not by model, and `run` skips anything
 already finished. Before a second model, move the first one's trials and
@@ -233,22 +273,23 @@ mv jobs/pf-*-full-* jobs/archive/$OLD/
 mv data/persona_fit/results/* data/persona_fit/results-archive/$OLD/
 ```
 
-Then run section 5 again with the new `--model`. `all` rewrites the personas,
-tasks and shards; with the same `--sample-rows` they hold the same people and
-the same items, so the two models are compared on identical questions.
+Then run section 6 again with the new `--model`. `all` rewrites the personas,
+tasks and shards for the same standard sample, so the two models are compared
+on identical questions; the fingerprint confirms it.
 
 Using a separate clone per model works too.
 
-## 7. What to send back
+## 8. What to send back
 
 Send `data/persona_fit/results/<dataset>/score.json` and `score.md` for each
-dataset, with the model id and `--sample-rows`. These are aggregate metrics.
+dataset, with the model id and the sample fingerprint `all` printed. These are
+aggregate metrics.
 
 Keep `predictions.csv`, the personas, the tasks and `jobs/` internal. They
 contain each person's real answers, and MovieLens and EB-NeRD forbid
 redistribution.
 
-## 8. Known issues
+## 9. Known issues
 
 - **An invalid answer is silently replaced.** If the model returns a
   single-choice value that is not one of the options, the shared survey code
@@ -262,8 +303,9 @@ redistribution.
   0.761, about what GLM scores.
 - **Bansak language.** The questionnaire and persona are translated into each
   country's survey language by us, not taken from the original instrument.
-  Switzerland has no recorded language, so its respondents see English. The
-  persona wrapper is English for everyone.
+  Switzerland has no recorded language, so its 236 respondents in the
+  standard sample see English; report Switzerland separately. The persona
+  wrapper is English for everyone.
 - **No persona-free control yet.** `pf jobs --dataset <d> --with-control` and
   `pf run --dataset <d> --mode none` run the same cards without a persona. None
   of the reference numbers include it.

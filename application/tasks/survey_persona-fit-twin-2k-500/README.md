@@ -1,6 +1,6 @@
 # Persona-fit: Twin-2K-500 held-out survey items (sheet row 06)
 
-Template task for one persona-fit dataset, path: **application (observational)**. The files here hold a single
+Template task for one persona-fit dataset. The files here hold a single
 synthetic example row so the oracle and contract tests can run. Real tasks (one per
 distinct task card) are generated under `application/tasks/_generated/persona-fit/twin-2k-500`.
 

@@ -4,7 +4,7 @@ title: EB-NeRD news clicks
 description: Persona-fit decision task (EB-NeRD news clicks). Answer as yourself.
 questions:
 - id: q001
-  prompt: 'Artikel 1, sektion sport: Danmark vinder — Sen aften i Parken. Ville du
+  prompt: 'Artikel 1, sektion sport: Danmark vinder — Sen aften i Parken.  Ville du
     åbne den?'
   type: single_choice
   construct: q001

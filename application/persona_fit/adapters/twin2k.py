@@ -88,7 +88,7 @@ class Twin2K500(DatasetAdapter):
     leakage_fields = ("answer_position",)
     overlay_dimensions = tuple(OVERLAYS.values())
     metric_key = "answer"
-    default_sample_rows = 20
+    default_sample_rows = 100
     instruction_md = (
         "# Survey\n\n"
         "Answer the survey in the context as yourself, the way you would on an online survey. "

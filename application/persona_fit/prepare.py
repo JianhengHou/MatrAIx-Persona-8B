@@ -64,6 +64,16 @@ def validate_frame(adapter: DatasetAdapter, frame: pd.DataFrame) -> pd.DataFrame
     return frame
 
 
+def sample_fingerprint(frame: pd.DataFrame) -> str:
+    """Hash of the scored row ids, so two machines can confirm they hold the same sample.
+
+    Same raw files, seed, and sample size give the same value. It names no
+    person, so it can be shared where the ids cannot.
+    """
+    ids = sorted(frame.loc[frame["scored"], "row_id"].astype(str))
+    return hashlib.sha256("\n".join(ids).encode("utf-8")).hexdigest()[:16]
+
+
 def draw_sample(
     adapter: DatasetAdapter,
     frame: pd.DataFrame,
@@ -127,6 +137,7 @@ def prepare(
             "eligibleRows": int(frame["eligible"].sum()),
             "scoredRows": int(frame["scored"].sum()),
             "scoredPersons": int(frame.loc[frame["scored"], "person_id"].nunique()),
+            "sampleFingerprint": sample_fingerprint(frame),
         },
         "personaFields": list(adapter.persona_fields),
         "cardFields": list(adapter.card_fields),

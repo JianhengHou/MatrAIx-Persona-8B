@@ -13,8 +13,7 @@
   "labels": {
     "immigration-conjoint-99001": {
       "rowId": "99001-1",
-      "outcome": "a",
-      "weight": 1.0
+      "outcome": "a"
     }
   }
 }

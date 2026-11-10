@@ -11,7 +11,7 @@ cat > /app/output/survey_result.json <<'JSON'
   "answers": [
     {
       "questionId": "q001",
-      "prompt": "Artikel 1, sektion sport: Danmark vinder \u2014 Sen aften i Parken. Ville du \u00e5bne den?",
+      "prompt": "Artikel 1, sektion sport: Danmark vinder \u2014 Sen aften i Parken.  Ville du \u00e5bne den?",
       "value": "yes"
     }
   ],

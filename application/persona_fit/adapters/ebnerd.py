@@ -91,7 +91,7 @@ class EBNeRD(DatasetAdapter):
     positive_option = "yes"
     metric_key = "opened"
     # People, not articles. Each person answers every article on one screen.
-    default_sample_rows = 20
+    default_sample_rows = 100
     instruction_md = (
         "# En skærm på Ekstra Bladet\n\n"
         "Det er maj 2023. Herunder er artiklerne på en skærm, du så. Rækkefølgen er ikke "

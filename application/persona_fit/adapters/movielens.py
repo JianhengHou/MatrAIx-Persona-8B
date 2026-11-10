@@ -150,7 +150,7 @@ class MovieLens1M(DatasetAdapter):
     rating_range = (1, 5)
     metric_key = "stars"
     # People, not ratings. Each person rates every held-out movie in one job.
-    default_sample_rows = 20
+    default_sample_rows = 100
     instruction_md = (
         "# Rate these movies\n\n"
         "It is the early 2000s. Each movie below is one you have not rated yet. Say how many "

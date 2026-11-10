@@ -197,7 +197,8 @@ class BansakAsylum(DatasetAdapter):
     positive_option = "a"
     metric_key = "chose_first"
     # People, not pairs. Each person answers all five pairs in one job.
-    default_sample_rows = 20
+    # A fifth of the 18,030 voters: about 240 per country.
+    default_sample_rows = 3606
     # English is the checked-in example (Germany overrides it per person).
     instruction_md = SURFACES["en"]["instruction"]
 
