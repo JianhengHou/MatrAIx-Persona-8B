@@ -16,8 +16,11 @@ Each trial's answer is scored against the person's real decision. Optionally
 the same trials can also be run with no persona (`none`, the persona-free
 control) to see how much of the result comes from the persona itself.
 
-Notes on datasets still under review, including what each one actually
-measures, are in [persona-fit-candidates.md](persona-fit-candidates.md).
+Why these five datasets were chosen out of 38 candidates, and how each task
+was designed, is in [persona-fit-datasets.md](persona-fit-datasets.md), with
+the graded catalog in [`persona_fit_datasets.xlsx`](persona_fit_datasets.xlsx).
+Earlier working notes on each dataset are in
+[persona-fit-candidates.md](persona-fit-candidates.md).
 
 ## Persona attributes
 

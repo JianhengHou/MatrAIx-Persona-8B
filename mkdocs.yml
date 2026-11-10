@@ -44,6 +44,7 @@ nav:
       - Pipeline: persona/pipeline.md
       - Validation: persona/validation.md
       - Persona fit: persona/persona-fit.md
+      - Persona fit datasets: persona/persona-fit-datasets.md
       - Persona fit results: persona/persona-fit-results.md
   - Application:
       - Overview: application/README.md

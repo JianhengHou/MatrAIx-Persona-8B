@@ -213,8 +213,9 @@ and reporting helpers in `persona/validation/scripts/`. For product scenarios
 survey, two conjoint experiments, MovieLens ratings, Danish news clicks) into
 survey tasks. Each real person becomes a persona, answers the items that person
 actually saw, and is scored against what the person really did. See
-[Persona fit](persona-fit.md), the [results so far](persona-fit-results.md),
-and [`handover.md`](../../handover.md) to run it with another model.
+[Persona fit](persona-fit.md), [how the five datasets were chosen](persona-fit-datasets.md),
+the [results so far](persona-fit-results.md), and
+[`handover.md`](../../handover.md) to run it with another model.
 
 ## Grounding Reporting
 

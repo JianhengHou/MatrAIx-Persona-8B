@@ -11,6 +11,14 @@ Reference numbers from GLM 5.3, and what they mean, are in
 Pipeline internals are in
 [`docs/persona/persona-fit.md`](docs/persona/persona-fit.md).
 
+Why these five datasets, out of 38 candidates, and how each task was designed
+is in [`docs/persona/persona-fit-datasets.md`](docs/persona/persona-fit-datasets.md).
+The full candidate catalog is
+[`docs/persona/persona_fit_datasets.xlsx`](docs/persona/persona_fit_datasets.xlsx):
+every dataset with its tier, the reason for it, what it lacks, access and
+source links, plus the original catalog it grew from. Start there if you want
+to look for more datasets or revisit a rejected one.
+
 ## 1. Install
 
 ```bash
