@@ -18,6 +18,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from ..paths import raw_dir
 from ..spec import Card, DatasetAdapter, PersonaSpec, RawFile, as_int, coded_overlay, is_missing, rating_question
 
 AGE = {1: "Under 18", 18: "18-24", 25: "25-34", 35: "35-44", 45: "45-49", 50: "50-55", 56: "56+"}
@@ -74,7 +75,7 @@ def _zip_places() -> dict[str, tuple[str, str]]:
     Census 2020 ZCTA relationship files. A ZCTA is the area where that zip is
     the most common one, so a PO-box-only zip has no row and is not mapped.
     """
-    base = Path(__file__).resolve().parents[3] / "data" / "persona_fit" / "ref"
+    base = raw_dir(SLUG)
     county = pd.read_csv(base / "zcta_county.txt", sep="|", dtype=str, encoding="utf-8-sig")
     place = pd.read_csv(base / "zcta_place.txt", sep="|", dtype=str, encoding="utf-8-sig")
     county["part"] = pd.to_numeric(county["AREALAND_PART"], errors="coerce").fillna(0)
@@ -130,6 +131,16 @@ class MovieLens1M(DatasetAdapter):
             "https://files.grouplens.org/datasets/movielens/ml-1m.zip",
             "GroupLens research licence: cite Harper & Konstan 2015; no redistribution.",
             unzip=True,
+        ),
+        RawFile(
+            "zcta_county.txt",
+            "https://www2.census.gov/geo/docs/maps-data/data/rel2020/zcta520/tab20_zcta520_county20_natl.txt",
+            "Census 2020 ZCTA-to-county relationship file (public domain); turns the zip into a county.",
+        ),
+        RawFile(
+            "zcta_place.txt",
+            "https://www2.census.gov/geo/docs/maps-data/data/rel2020/zcta520/tab20_zcta520_place20_natl.txt",
+            "Census 2020 ZCTA-to-place relationship file (public domain); turns the zip into a town.",
         ),
     )
     persona_fields = ("gender", "age", "occupation", "zip")

@@ -208,12 +208,6 @@ class PersonaJsonSurvey(PersonaMixin, BaseAgent):
                 repo_root=_repo_root(),
                 fallback_questionnaire=instrument,
             )
-        if content is not None:
-            from harbor.utils.templating import apply_stimulus_params
-
-            # experiment.json injects the assigned arm as MATRIX_PARAM_<FACTOR>.
-            content.instruction_markdown = apply_stimulus_params(content.instruction_markdown)
-            content.context_markdown = apply_stimulus_params(content.context_markdown)
         instruction_md = (
             content.combined_markdown().strip()
             if content is not None and content.combined_markdown().strip()

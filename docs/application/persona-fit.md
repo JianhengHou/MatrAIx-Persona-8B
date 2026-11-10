@@ -61,17 +61,20 @@ personas, job shards, and `data/persona_fit/`).
 ## Run one dataset
 
 ```bash
-PF="uv run python application/scripts/run_persona_fit.py"
-$PF list                                  # datasets, path, raw files
-$PF download --dataset eb-nerd            # direct links; prints steps for gated files
-$PF all --dataset eb-nerd                 # prepare + personas + tasks + jobs
-$PF run --dataset eb-nerd --mode full --parallel 20
-$PF score --dataset eb-nerd
+pf() { uv run python application/scripts/run_persona_fit.py "$@"; }
+pf list                                   # datasets, path, raw files
+pf download --dataset eb-nerd             # direct links; prints steps for gated files
+pf all --dataset eb-nerd                  # prepare + personas + tasks + jobs
+pf run --dataset eb-nerd --mode full --parallel 20
+pf score --dataset eb-nerd
 
 # optional persona-free control on the same trials
-$PF jobs --dataset eb-nerd --with-control
-$PF run --dataset eb-nerd --mode none --parallel 20
+pf jobs --dataset eb-nerd --with-control
+pf run --dataset eb-nerd --mode none --parallel 20
 ```
+
+Running with another model, sizes and parallelism: [`handover.md`](../../handover.md).
+Results so far: [persona-fit-results.md](persona-fit-results.md).
 
 `all` accepts `--sample-rows` (people that get trials, drawn from the whole
 dataset by person), `--max-rows-per-person`, and

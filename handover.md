@@ -1,0 +1,269 @@
+# Handover: running the persona-fit datasets with your own model
+
+This branch (`eval-persona-dataset`) turns five public datasets of real
+decisions into survey tasks. Each real person becomes a simulated persona, the
+persona answers the items that person actually saw, and the answers are scored
+against what the person really did. You bring a model and an API key; the rest
+is fixed.
+
+Reference numbers from GLM 5.3, and what they mean, are in
+[`docs/application/persona-fit-results.md`](docs/application/persona-fit-results.md).
+Pipeline internals are in
+[`docs/application/persona-fit.md`](docs/application/persona-fit.md).
+
+## 1. Install
+
+```bash
+git clone -b eval-persona-dataset https://github.com/JianhengHou/MatrAIx-Persona-8B.git
+cd MatrAIx-Persona-8B
+uv sync --python 3.12
+```
+
+Use Python 3.12. With Python 3.15 some dependencies have no prebuilt wheel and
+`uv sync` fails while building `tiktoken`.
+
+Every command below goes through one shell function. Define it once per shell:
+
+```bash
+pf() { uv run python application/scripts/run_persona_fit.py "$@"; }
+```
+
+A plain variable (`PF="uv run ..."; $PF list`) does not work in zsh, the macOS
+default shell, because zsh does not split it into words.
+
+Behind a corporate proxy that intercepts TLS (Zscaler and similar), add
+`--native-tls` after `uv run` and `uv sync`, and point `SSL_CERT_FILE` and
+`REQUESTS_CA_BUNDLE` at your CA bundle. Otherwise leave both out.
+
+## 2. Download the data
+
+The raw files go under `data/persona_fit/raw/<dataset>/`, which is gitignored.
+Never commit them; two of the licences forbid redistribution.
+
+Four datasets download directly:
+
+```bash
+pf download --dataset twin-2k-500,immigration-conjoint,movielens-1m,bansak-asylum
+```
+
+| Dataset | Files | Source | Licence |
+|---------|-------|--------|---------|
+| `twin-2k-500` | `question_catalog.json`, `wave1_3_response.csv`, `wave4_response.csv` (6 MB) | [Hugging Face, LLM-Digital-Twin/Twin-2K-500](https://huggingface.co/datasets/LLM-Digital-Twin/Twin-2K-500) | See the dataset card |
+| `immigration-conjoint` | `repdata.tab` (2 MB) | [Harvard Dataverse doi:10.7910/DVN/25505](https://doi.org/10.7910/DVN/25505) | CC0 |
+| `movielens-1m` | `ml-1m.zip`, unzipped to `ml-1m/` (6 MB) | [GroupLens](https://grouplens.org/datasets/movielens/1m/) | Research use, no redistribution, cite Harper & Konstan 2015 |
+| `movielens-1m` | `zcta_county.txt`, `zcta_place.txt` (17 MB) | US Census 2020 ZCTA relationship files; they turn a zip code into a town and county | Public domain |
+| `bansak-asylum` | `conjoint_data_final.tab`, `respondent_data_final.tab` (18 MB) | [Harvard Dataverse doi:10.7910/DVN/KL0FDF](https://doi.org/10.7910/DVN/KL0FDF) | CC0 |
+
+EB-NeRD needs a manual step, because the newspaper requires you to accept its
+terms first:
+
+1. Go to [recsys.eb.dk](https://recsys.eb.dk/), sign in, and accept the
+   research terms.
+2. Download **ebnerd_small** (80 MB zip). Not demo, not large.
+3. Put it at `data/persona_fit/raw/eb-nerd/ebnerd_small.zip` and unzip it in
+   that folder:
+
+   ```bash
+   cd data/persona_fit/raw/eb-nerd && unzip ebnerd_small.zip && cd -
+   ```
+
+   You should now have `articles.parquet`, `train/behaviors.parquet`,
+   `train/history.parquet`, `validation/behaviors.parquet` and
+   `validation/history.parquet`. A `__MACOSX/` folder from the zip is harmless.
+
+EB-NeRD is research-only: no redistribution, and the files must not be used
+to train a language model.
+
+To confirm you have the same files the reference run used:
+
+```bash
+cd data/persona_fit/raw && shasum -a 256 -c - <<'EOF'
+e72e305f0c7c83bb990e97de4c0cf2c718ead18cc197239b7feeb354c9ac1bef  twin-2k-500/question_catalog.json
+fc227b1682e2654fd4b2a8152294b68118c0e3be4d83f4a9af5f3e96df56d3f0  twin-2k-500/wave1_3_response.csv
+09ec1a88bdd48fec95963da3102df0ca467378bf729cbc1c0b869b0f1e4fb942  twin-2k-500/wave4_response.csv
+d40a380bcf8d0edcafd5899d6385f77f6bdcb1f7a94db97c937b1b6c3c6f35d6  immigration-conjoint/repdata.tab
+a6898adb50b9ca05aa231689da44c217cb524e7ebd39d264c56e2832f2c54e20  movielens-1m/ml-1m.zip
+3ed41278d637dc249e0323306f68be8a6c234e3090f4de88ef328dee71aeaaaf  movielens-1m/zcta_county.txt
+698a5dad71ed419411677d0ffd8ecd9331067f59c472cdd239b92c12f698285d  movielens-1m/zcta_place.txt
+84675e4f54bdc3f4f6b21189156d67d00a57bc14d2c1d1566116790050de6dea  bansak-asylum/conjoint_data_final.tab
+06c24e6e73b7d9ce86ed0701b567c2498ae4289ef37daade754d1c38a6724369  bansak-asylum/respondent_data_final.tab
+84fc6fc902b8e8dad8383835c90185d54e0916060586d428ced391da4a92bd4f  eb-nerd/ebnerd_small.zip
+EOF
+cd -
+```
+
+## 3. Point it at your model
+
+Put your key in `.env.local` at the repo root (gitignored), or export it in
+the shell; a shell export wins over `.env.local`. Then name the model as
+`<provider>/<model id>`.
+
+| Provider | `--model` | Required variables | Optional |
+|----------|-----------|--------------------|----------|
+| OpenAI | `openai/<model>` | `OPENAI_API_KEY` | |
+| Any OpenAI-compatible server (vLLM, SGLang, Together, Fireworks, a gateway) | `openai/<served model name>` | `OPENAI_API_KEY`, `OPENAI_BASE_URL` | |
+| Anthropic | `anthropic/<model>` | `ANTHROPIC_API_KEY` | |
+| Google Gemini | `gemini/<model>` | `GEMINI_API_KEY` | `GEMINI_API_BASE` |
+| OpenRouter | `openrouter/<vendor>/<model>` | `OPENROUTER_API_KEY` | `OPENROUTER_API_BASE` |
+| DeepSeek | `deepseek/<model>` | `DEEPSEEK_API_KEY` | `DEEPSEEK_API_BASE` |
+| xAI | `xai/<model>` | `XAI_API_KEY` | `XAI_API_BASE` |
+| Z.ai (GLM) | `zai/<model>` | `ZAI_API_KEY` | `ZAI_API_BASE` |
+| Alibaba DashScope | `dashscope/<model>` | `DASHSCOPE_API_KEY` | `DASHSCOPE_API_BASE` |
+
+A self-hosted model, for example served with vLLM:
+
+```bash
+# .env.local
+OPENAI_BASE_URL=http://my-gpu-box:8000/v1
+OPENAI_API_KEY=anything-your-server-accepts
+```
+
+and run with `--model openai/<the name vLLM serves it under>`. Setting
+`OPENAI_BASE_URL` also sends `anthropic/` models through that URL, so leave it
+unset if you switch back to Anthropic.
+
+What the model has to support:
+
+- **Context of at least 128k tokens.** The largest prompts are about 76k input
+  tokens (EB-NeRD) and 59k (Twin-2K), measured with the GLM tokenizer; other
+  tokenizers differ, Danish text especially. A 32k model will fail those
+  trials.
+- **JSON output.** The request sets `response_format: json_object`. A model or
+  server that ignores it and wraps the answer in prose will fail to parse.
+- **Enough output budget.** Twin-2K asks about 84 questions in one call.
+  Anthropic models get 16,384 output tokens. OpenAI-family calls use the
+  server's default `max_tokens`; a reasoning model with a small default can be
+  cut off mid-JSON. GLM through `zai/` is special-cased to 65,536 tokens with
+  low reasoning effort.
+- **Timeout.** Each request times out after 180 seconds. Raise it with
+  `LLM_REQUEST_TIMEOUT_SECONDS=600` for slow or reasoning models; one Twin-2K
+  trial took 534 seconds on GLM.
+
+Smoke test before a full run, two people on the smallest dataset:
+
+```bash
+pf all --dataset immigration-conjoint --sample-rows 2 --model <your model> --max-agents 1 --concurrent 1
+pf run --dataset immigration-conjoint --mode full --parallel 2
+pf score --dataset immigration-conjoint
+```
+
+You should see two `Rewards:` lines and a score table with `Valid answers` 10.
+Then remove that smoke run before the real one (see section 6).
+
+## 4. How much each dataset costs
+
+One person is one trial is one model call. The default in the code is 20
+people per dataset; the reference run used 100, so always pass `--sample-rows`.
+
+| Dataset | People available | Reference run | Questions per trial, median (max) | Input tokens per trial, median (max) | Output tokens per trial, median | Seconds per trial on GLM, median (max) | Input tokens for 100 people |
+|---------|------------------|---------------|------------------------------------|---------------------------------------|----------------------------------|-----------------------------------------|------------------------------|
+| `twin-2k-500` | 2,058 | 100 people, 8,224 items | 84 (84) | 37k (59k) | 1.1k | 17 (534) | 3.6M |
+| `immigration-conjoint` | 1,404 | 100 people, 500 pairs | 5 (5) | 2.1k (2.1k) | 200 | 7 (20) | 0.21M |
+| `movielens-1m` | 6,040 | 100 people, 3,064 ratings | 17 (209) | 2.6k (18k) | 220 | 6 (74) | about 0.3M |
+| `bansak-asylum` | 18,030 | 100 people, 500 pairs | 5 (5) | 2.1k (2.7k) | 200 | 9 (24) | 0.21M |
+| `eb-nerd` | 635 | 100 people, 1,098 articles | 8 (54) | 24k (76k) | 180 | 8 (49) | 2.9M |
+
+Output tokens exclude hidden reasoning on providers that do not report it.
+All five at 100 people is about 7.2M input tokens and 500 calls. The people
+are always the same: a seeded hash of the person id picks them, so
+`--sample-rows 200` keeps the first 100 and adds the next 100. EB-NeRD cannot
+go above 635, because only readers with a known age or gender can be a
+persona.
+
+## 5. Run
+
+```bash
+MODEL=openai/your-model   # your provider and model
+N=100                     # people per dataset
+P=20                      # parallel trials, see below
+
+for d in twin-2k-500 immigration-conjoint movielens-1m bansak-asylum eb-nerd; do
+  pf all   --dataset $d --sample-rows $N --model $MODEL --max-agents 1 --concurrent 1
+  pf run   --dataset $d --mode full --parallel $P
+  pf score --dataset $d
+done
+```
+
+- `all` prepares the sample, writes one persona per person, one task per
+  person, and one job shard per person. Keep `--max-agents 1 --concurrent 1`:
+  that is one person per shard, which is what `--parallel` spreads out.
+- `run` runs every pending shard. Run it again after a crash or a rate-limit
+  burst: finished trials are kept, failed ones are deleted and redone. It
+  exits non-zero while anything failed.
+- `score` prints the table and writes
+  `data/persona_fit/results/<dataset>/score.{json,md}` and `predictions.csv`.
+- One `run` command does its datasets one after another. To run datasets at
+  the same time, open one terminal per dataset; the parallel counts add up
+  against your provider limit.
+
+### Choosing `--parallel`
+
+Each parallel trial is a separate Python process that mostly waits on the API.
+Measured: about 230 MB for the main process plus about 95 MB per parallel
+trial, so `--parallel 20` needs about 2 GB and `--parallel 100` about 10 GB.
+CPU is not the limit on a laptop. Your provider's rate limit almost always is.
+
+Pick the largest `P` that satisfies all three:
+
+- Memory: `P ≤ (free RAM in GB − 0.5) × 10`.
+- Requests: `P ≤ requests-per-minute limit × seconds per trial / 60`.
+- Tokens: `P ≤ tokens-per-minute limit × seconds per trial / (60 × input tokens per trial)`.
+
+The token limit binds first on Twin-2K and EB-NeRD. At `P = 20` on GLM speed,
+Twin-2K sends about 2.6M input tokens a minute and EB-NeRD about 3.6M; the
+conjoints send about 0.3M and MovieLens about 0.5M. If you hit rate-limit errors,
+lower `P` for those two and run `run` again. A self-hosted server is limited
+by its own batch size instead; start at the server's maximum concurrent
+sequences.
+
+With GLM at `P = 20`, Bansak's 100 people took 66 seconds and EB-NeRD's took
+100 seconds. A single slow trial sets the tail.
+
+## 6. Switching models
+
+Job folders are named by dataset, not by model, and `run` skips anything
+already finished. Before a second model, move the first one's trials and
+scores out of the way, or the new run will either skip everything or be
+scored together with the old one:
+
+```bash
+OLD=glm-5.3
+mkdir -p jobs/archive/$OLD data/persona_fit/results-archive/$OLD
+mv jobs/pf-*-full-* jobs/archive/$OLD/
+mv data/persona_fit/results/* data/persona_fit/results-archive/$OLD/
+```
+
+Then run section 5 again with the new `--model`. `all` rewrites the personas,
+tasks and shards; with the same `--sample-rows` they hold the same people and
+the same items, so the two models are compared on identical questions.
+
+Using a separate clone per model works too.
+
+## 7. What to send back
+
+Send `data/persona_fit/results/<dataset>/score.json` and `score.md` for each
+dataset, with the model id and `--sample-rows`. These are aggregate metrics.
+
+Keep `predictions.csv`, the personas, the tasks and `jobs/` internal. They
+contain each person's real answers, and MovieLens and EB-NeRD forbid
+redistribution.
+
+## 8. Known issues
+
+- **An invalid answer is silently replaced.** If the model returns a
+  single-choice value that is not one of the options, the shared survey code
+  replaces it with the first option before scoring: `yes` in EB-NeRD, `a` in
+  the conjoints, the first option in Twin-2K. A missing answer is filled the
+  same way. The raw model output is not stored, so this cannot be detected
+  after the fact. A model that formats answers loosely will look biased
+  towards `yes` and `a`.
+- **Twin-2K is mostly recall.** Every scored item was asked in an earlier
+  sitting, and the earlier answers are in the persona. Copying them scores
+  0.761, about what GLM scores.
+- **Bansak language.** The questionnaire and persona are translated into each
+  country's survey language by us, not taken from the original instrument.
+  Switzerland has no recorded language, so its respondents see English. The
+  persona wrapper is English for everyone.
+- **No persona-free control yet.** `pf jobs --dataset <d> --with-control` and
+  `pf run --dataset <d> --mode none` run the same cards without a persona. None
+  of the reference numbers include it.
