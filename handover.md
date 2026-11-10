@@ -124,13 +124,16 @@ unset if you switch back to Anthropic.
 
 What the model has to support:
 
-- **Context of at least 128k tokens.** The largest prompts are about 76k input
-  tokens (EB-NeRD) and 59k (Twin-2K), measured with the GLM tokenizer; other
-  tokenizers differ, Danish text especially. A 32k model will fail those
-  trials.
+- **Context of at least 128k tokens.** The largest prompts in the standard
+  sample are about 99k input tokens (EB-NeRD), 69k (MovieLens) and 59k
+  (Twin-2K), counted with the GLM tokenizer. 54 EB-NeRD readers are above 64k
+  and 7 above 90k. A tokenizer that is less efficient on Danish can push those
+  7 past 128k; they fail with a context error and show up as failed trials. A
+  32k or 64k model fails many more.
 - **JSON output.** The request sets `response_format: json_object`. A model or
   server that ignores it and wraps the answer in prose will fail to parse.
-- **Enough output budget.** Twin-2K asks about 84 questions in one call.
+- **Enough output budget.** Twin-2K asks 84 questions in one call, and the
+  heaviest MovieLens user rates 463 movies in one call.
   Anthropic models get 16,384 output tokens. OpenAI-family calls use the
   server's default `max_tokens`; a reasoning model with a small default can be
   cut off mid-JSON. GLM through `zai/` is special-cased to 65,536 tokens with
@@ -193,22 +196,27 @@ run (section 7).
 ## 4. The fixed sample
 
 Everyone runs the same people and the same items. Do not pass `--sample-rows`;
-the defaults below are the standard sample.
+the defaults below are the standard sample. Four datasets are scored in full.
+Bansak, by far the largest, is scored on a fixed fifth of its voters.
 
 | Dataset | People | Items scored | Sample fingerprint |
 |---------|--------|--------------|--------------------|
-| `twin-2k-500` | 100 of 2,058 | 8,224 survey items | `825d306854636041` |
-| `immigration-conjoint` | 100 of 1,404 | 500 pairs | `14a095ebd5536c16` |
-| `movielens-1m` | 100 of 6,040 | 3,064 ratings | `6af1635699f608c2` |
+| `twin-2k-500` | all 2,058 | 168,768 survey items | `03fd77bc285cbe08` |
+| `immigration-conjoint` | all 1,404 | 7,009 pairs | `cf6a445e7fc15a8c` |
+| `movielens-1m` | all 6,040 | 200,016 ratings | `4352c391291f6558` |
 | `bansak-asylum` | 3,606 of 18,030 (20%) | 18,030 pairs | `775b2ee159729cfc` |
-| `eb-nerd` | 100 of 635 | 1,098 articles | `b41c7940914713cb` |
+| `eb-nerd` | all 635 | 7,084 articles | `a2ee5d2e771de231` |
 
-How the people are picked: each person id is hashed with the fixed seed
-`20261104` (SHA-256 of `20261104:sample:<person id>`), people are sorted by that
-hash, and the first N are taken. Nothing depends on the machine, the model, or
-the run order, so the same raw files always give the same people. A larger N
-keeps everyone in a smaller N: the Bansak 3,606 contain the 100 of the GLM
-reference run.
+"All" means every person the dataset can score: EB-NeRD keeps only readers
+with a known age or gender, and MovieLens scores each user's latest 20% of
+ratings, with the earlier 80% in the persona.
+
+How the Bansak fifth is picked: each person id is hashed with the fixed seed
+`20261104` (SHA-256 of `20261104:sample:<person id>`), people are sorted by
+that hash, and the first 3,606 are taken. Nothing depends on the machine, the
+model, or the run order, so the same raw files always give the same people.
+The 100 Bansak people of the GLM reference run are among them, and every
+reference-run person in the other four datasets is in the full set.
 
 The fingerprint is a hash of every scored item id. `pf all` and `pf prepare`
 print it on the first line for each dataset:
@@ -221,31 +229,37 @@ bansak-asylum: {"rows": 90150, ..., "scoredPersons": 3606, "sampleFingerprint": 
 files (check the sha256 list in section 2), a different `--sample-rows`, or
 changed adapter code. Results from a different sample cannot be compared.
 
-Why these sizes: 100 people is the size of the GLM reference run and is
-enough for an overall score. On the conjoints, five pairs per person, the 95%
-interval on accuracy is about ±5 points; it is tighter where each person
-answers more items.
-Bansak is cheap per person and spans 15 countries, so it takes a fifth of the
-voters: 213 to 258 per country, enough to compare countries (about ±3 points
-each) and about ±1 point overall. EB-NeRD cannot go above 635, because only
-readers with a known age or gender can be a persona.
+Why a fifth for Bansak: its 18,030 voters are more than the other four
+datasets' scored people put together. A fifth still gives 213 to 258 voters
+per country, enough to compare countries (about ±3 points each) and about ±1
+point overall, and its makeup matches the full survey within 1 percentage
+point by country.
 
 ## 5. How much each dataset costs
 
 One person is one trial is one model call.
 
-| Dataset | Trials | Questions per trial, median (max) | Input tokens per trial, median (max) | Output tokens per trial, median | Seconds per trial on GLM, median (max) | Input tokens, whole sample |
-|---------|--------|------------------------------------|---------------------------------------|----------------------------------|-----------------------------------------|----------------------------|
-| `twin-2k-500` | 100 | 84 (84) | 37k (59k) | 1.1k | 17 (534) | 3.6M |
-| `immigration-conjoint` | 100 | 5 (5) | 2.1k (2.1k) | 200 | 7 (20) | 0.21M |
-| `movielens-1m` | 100 | 17 (209) | 2.6k (18k) | 220 | 6 (74) | about 0.3M |
-| `bansak-asylum` | 3,606 | 5 (5) | 2.1k (2.7k) | 200 | 9 (24) | about 7.6M |
-| `eb-nerd` | 100 | 8 (54) | 24k (76k) | 180 | 8 (49) | 2.9M |
+| Dataset | Trials | Questions per trial, median (max) | Input tokens per trial, median (max) | Input tokens, whole sample | Output tokens, whole sample | Hours at `P = 20` on GLM |
+|---------|--------|------------------------------------|---------------------------------------|----------------------------|-----------------------------|--------------------------|
+| `twin-2k-500` | 2,058 | 84 (84) | 37k (59k) | 76M | 2.4M | 0.5 |
+| `immigration-conjoint` | 1,404 | 5 (5) | 2.1k (2.1k) | 2.9M | 0.3M | 0.15 |
+| `movielens-1m` | 6,040 | 19 (463) | 3.4k (69k) | 33M | 3M | 0.6 |
+| `bansak-asylum` | 3,606 | 5 (5) | 2.2k (2.4k) | 7.9M | 0.7M | 0.45 |
+| `eb-nerd` | 635 | 8 (74) | 25k (99k) | 19M | 0.2M | 0.1 |
+| **Total** | **13,743** | | | **138M** | **about 7M** | **about 2** |
 
-Per-trial numbers are from the GLM reference run (100 people each). Output
-tokens exclude hidden reasoning on providers that do not report it. The whole
-standard sample is 4,006 calls and about 14.6M input tokens; Bansak is half of
-the tokens and almost all of the calls.
+How these were estimated: the prompt of every person in the standard sample
+was generated and measured, then converted to tokens with the ratio observed
+on the 100-person GLM reference run of each dataset. Output and hours scale
+the reference run's per-question output and per-trial time. Other tokenizers
+differ, Danish text especially. Output excludes hidden reasoning on providers
+that do not report it; a reasoning model such as DeepSeek V4 wrote about five
+times GLM's output on Twin-2K.
+
+Preparing the sample also takes time and memory before any model call. `pf all`
+for Twin-2K takes about 15 minutes and peaks at about 2.5 GB of RAM; all five
+together take about 20 minutes. The generated personas, tasks and shards fill
+about 1.5 GB on disk, and the trial folders from a full run about 2 GB more.
 
 ## 6. Run
 
@@ -295,9 +309,8 @@ by its own batch size instead; start at the server's maximum concurrent
 sequences.
 
 With GLM at `P = 20`, 100 Bansak people took 66 seconds and EB-NeRD's 100 took
-100 seconds, so the 3,606 Bansak people take about 30 minutes at the same
-speed. A single slow trial sets the tail. Bansak's 3,606 shards also mean
-3,606 persona files, task folders and job folders on disk, about 650 MB.
+100 seconds; the whole standard sample is about two hours at that speed. A
+single slow trial sets the tail of each dataset.
 
 ## 7. Switching models
 

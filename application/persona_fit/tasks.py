@@ -194,13 +194,16 @@ def label_entry(adapter: DatasetAdapter, row: pd.Series) -> dict[str, Any]:
 
 def persona_strategy(adapter: DatasetAdapter) -> dict[str, Any]:
     """The cohort is the dataset's own real people; jobs pair each with its own decisions."""
+    sampling: dict[str, Any] = {"mode": "random"}
+    if adapter.default_sample_rows is not None:
+        sampling["sampleSize"] = adapter.default_sample_rows
     return {
         "schemaVersion": "1.0",
         "pool": rel(persona_dir(adapter.slug)),
         "cohortId": "persona-fit-{}".format(adapter.slug),
         "sources": ["persona-fit/{}".format(adapter.slug)],
         "dimensionFilters": {},
-        "sampling": {"mode": "random", "sampleSize": adapter.default_sample_rows},
+        "sampling": sampling,
     }
 
 
@@ -300,44 +303,50 @@ def card_key(adapter: DatasetAdapter, card: Card, row: pd.Series) -> str:
 
 
 def build_tasks(adapter: DatasetAdapter, prepared: Prepared, *, clean: bool = True) -> dict[str, Any]:
-    """One task per distinct card among scored rows. Writes work/<slug>/tasks.json."""
+    """One task per distinct card among scored rows. Writes work/<slug>/tasks.json.
+
+    Each person's task is written as soon as it is built, so memory holds one
+    person at a time; a full dataset has hundreds of thousands of scored rows.
+    """
     root = generated_root(adapter)
     if clean and root.exists():
         shutil.rmtree(root)
     root.mkdir(parents=True, exist_ok=True)
-    groups: dict[str, dict[str, Any]] = {}
-    person_rows: dict[str, list[pd.Series]] = {}
-    for _, row in prepared.scored.iterrows():
-        person_rows.setdefault(str(row["person_id"]), []).append(row)
-    for person_id, rows in person_rows.items():
+    index: dict[str, Any] = {}
+    for person_id, frame in prepared.scored.groupby("person_id", sort=False):
+        person_id = str(person_id)
+        rows = [row for _, row in frame.iterrows()]
         card = adapter.card(rows[0]) if len(rows) == 1 else adapter.form(rows)
         key = card_key(adapter, card, rows[0])
-        group = groups.setdefault(key, {"card": card, "labels": {}, "rows": []})
         pid = persona_file_id(adapter, person_id)
-        if pid in group["labels"]:
+        if len(rows) == 1:
+            label = label_entry(adapter, rows[0])
+        else:
+            label = {
+                "rowId": str(rows[0]["row_id"]),
+                "outcome": adapter.truth(rows[0]),
+                "items": {question["id"]: item_entry(adapter, row) for question, row in zip(card.questions, rows)},
+            }
+        row_ids = [str(row["row_id"]) for row in rows]
+        entry = index.get(key)
+        if entry is None:
+            dest = write_task(adapter, root / key, card, {pid: label}, task_id=key, with_docs=False)
+            index[key] = {"path": rel(dest), "rows": row_ids, "persons": [person_id], "arm": label.get("arm")}
+            continue
+        labels_path = root / key / "tests" / "labels.json"
+        payload = json.loads(labels_path.read_text(encoding="utf-8"))
+        if pid in payload["labels"]:
             raise ValueError(
                 "{}: person {} has two scored rows with an identical card; make the card distinct".format(
                     adapter.slug, person_id
                 )
             )
-        if len(rows) == 1:
-            group["labels"][pid] = label_entry(adapter, rows[0])
-        else:
-            group["labels"][pid] = {
-                "rowId": str(rows[0]["row_id"]),
-                "outcome": adapter.truth(rows[0]),
-                "items": {question["id"]: item_entry(adapter, row) for question, row in zip(card.questions, rows)},
-            }
-        group["rows"].extend((str(row["row_id"]), person_id) for row in rows)
-    index: dict[str, Any] = {}
-    for key, group in groups.items():
-        dest = write_task(adapter, root / key, group["card"], group["labels"], task_id=key, with_docs=False)
-        index[key] = {
-            "path": rel(dest),
-            "rows": [rid for rid, _ in group["rows"]],
-            "persons": list(dict.fromkeys(pid for _, pid in group["rows"])),
-            "arm": next((label.get("arm") for label in group["labels"].values() if label.get("arm")), None),
-        }
+        payload["labels"][pid] = label
+        labels_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        entry["rows"].extend(row_ids)
+        if person_id not in entry["persons"]:
+            entry["persons"].append(person_id)
+        entry["arm"] = entry["arm"] or label.get("arm")
     summary = {"dataset": adapter.slug, "taskCount": len(index), "tasks": index}
     out = work_dir(adapter.slug)
     out.mkdir(parents=True, exist_ok=True)

@@ -7,7 +7,6 @@
   ],
   "dimensionFilters": {},
   "sampling": {
-    "mode": "random",
-    "sampleSize": 100
+    "mode": "random"
   }
 }

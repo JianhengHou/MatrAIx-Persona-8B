@@ -100,7 +100,8 @@ class DatasetAdapter:
     metric_key: ClassVar[str] = "decision"
     instruction_md: ClassVar[str] = ""
 
-    default_sample_rows: ClassVar[int] = 400
+    # People scored when --sample-rows is not given. None scores every eligible person.
+    default_sample_rows: ClassVar[int | None] = 400
     seed: ClassVar[int] = 20261104
 
     # -- required per dataset -------------------------------------------------

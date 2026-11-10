@@ -78,7 +78,7 @@ def draw_sample(
     adapter: DatasetAdapter,
     frame: pd.DataFrame,
     *,
-    sample_rows: int,
+    sample_rows: int | None,
     max_rows_per_person: int,
     skip_people: set[str] | None = None,
 ) -> pd.Series:
