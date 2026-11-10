@@ -128,12 +128,6 @@ class DatasetAdapter:
     # -- defaults ---------------------------------------------------------------
 
     @property
-    def template_name(self) -> str:
-        if self.path == "application":
-            return "survey_persona-fit-{}".format(self.slug)
-        return "survey-persona-fit-{}".format(self.slug)
-
-    @property
     def uses_history(self) -> bool:
         return False
 

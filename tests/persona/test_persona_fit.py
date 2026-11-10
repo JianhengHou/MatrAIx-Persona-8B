@@ -11,19 +11,16 @@ import pytest
 
 pd = pytest.importorskip("pandas")
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
-_APPLICATION = REPO_ROOT / "application"
-if str(_APPLICATION) not in sys.path:
-    sys.path.insert(0, str(_APPLICATION))
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
-from persona_fit import tasks as pf_tasks  # noqa: E402
-from persona_fit.jobs import plan_blocks, prepare_shard, shard_needs_rerun, trial_needs_rerun  # noqa: E402
-from persona_fit.paths import VERIFIER_SOURCE  # noqa: E402
-from persona_fit.personas import pool_manifest, render_persona_yaml, schema_values  # noqa: E402
-from persona_fit.prepare import draw_sample, validate_frame  # noqa: E402
-from persona_fit.registry import ADAPTERS, all_adapters, get_adapter  # noqa: E402
-from persona_fit.adapters.ebnerd import _article_note, _engagement  # noqa: E402
-from persona_fit.spec import DECISION_QID, PROBABILITY_QID  # noqa: E402
+from persona.persona_fit import tasks as pf_tasks  # noqa: E402
+from persona.persona_fit.jobs import plan_blocks, prepare_shard, shard_needs_rerun, trial_needs_rerun  # noqa: E402
+from persona.persona_fit.paths import VERIFIER_SOURCE  # noqa: E402
+from persona.persona_fit.personas import pool_manifest, render_persona_yaml, schema_values  # noqa: E402
+from persona.persona_fit.prepare import draw_sample, validate_frame  # noqa: E402
+from persona.persona_fit.registry import ADAPTERS, all_adapters, get_adapter  # noqa: E402
+from persona.persona_fit.adapters.ebnerd import _article_note, _engagement  # noqa: E402
+from persona.persona_fit.spec import DECISION_QID, PROBABILITY_QID  # noqa: E402
 
 SENTINEL = "ZZ_LEAK_SENTINEL_ZZ"
 ADAPTER_IDS = list(ADAPTERS)
@@ -168,7 +165,7 @@ def test_verifier_fails_without_a_label_for_this_persona(tmp_path: Path) -> None
 
 
 def test_scale_item_allows_one_neighbouring_step() -> None:
-    from persona_fit.verifier.ground_truth import item_credit
+    from persona.persona_fit.verifier.ground_truth import item_credit
 
     assert item_credit("o3", "o4", 5) == 0.5
     assert item_credit("o4", "o4", 5) == 1.0
@@ -283,7 +280,7 @@ def _trial(root: Path, name: str, *, exception: str | None, reward: float | None
 
 
 def test_rerun_replaces_only_failed_trials(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from persona_fit import jobs as pf_jobs
+    from persona.persona_fit import jobs as pf_jobs
 
     shard = tmp_path / "pf-demo-full-0001"
     shard.mkdir()

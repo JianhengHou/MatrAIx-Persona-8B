@@ -1,10 +1,10 @@
 """Checked-in template tasks and generated per-decision tasks.
 
-Template: ``application/tasks/survey_persona-fit-<slug>/``, filled with one
+Template: ``persona/persona_fit/tasks/<slug>/``, filled with one
 synthetic example row so the oracle and the contract tests can run.
 
 Generated: one task folder per distinct task card under
-``application/tasks/_generated/persona-fit/<slug>/``. ``tests/labels.json``
+``data/persona_fit/tasks/<slug>/`` (gitignored). ``tests/labels.json``
 holds each persona's held-out decision keyed by persona id. The agent never
 sees ``tests/``.
 """
@@ -21,8 +21,8 @@ import pandas as pd
 import yaml
 
 from .paths import (
-    APP_GENERATED_ROOT,
-    APP_TASK_TEMPLATES,
+    GENERATED_TASKS,
+    TASK_TEMPLATES,
     VERIFIER_SOURCE,
     persona_dir,
     rel,
@@ -97,11 +97,11 @@ def oracle_result(questionnaire: dict[str, Any]) -> dict[str, Any]:
 
 
 def template_dir(adapter: DatasetAdapter) -> Path:
-    return APP_TASK_TEMPLATES / adapter.template_name
+    return TASK_TEMPLATES / adapter.slug
 
 
 def generated_root(adapter: DatasetAdapter) -> Path:
-    return APP_GENERATED_ROOT / adapter.slug
+    return GENERATED_TASKS / adapter.slug
 
 
 def instrument_id(adapter: DatasetAdapter, task_id: str | None = None) -> str:
@@ -272,12 +272,12 @@ def template_readme(adapter: DatasetAdapter) -> str:
         "## Run",
         "",
         "```bash",
-        "uv run python application/scripts/run_persona_fit.py all --dataset {}".format(adapter.slug),
-        "uv run python application/scripts/run_persona_fit.py run --dataset {} --mode full".format(adapter.slug),
-        "uv run python application/scripts/run_persona_fit.py score --dataset {}".format(adapter.slug),
+        "uv run python -m persona.persona_fit all --dataset {}".format(adapter.slug),
+        "uv run python -m persona.persona_fit run --dataset {} --mode full".format(adapter.slug),
+        "uv run python -m persona.persona_fit score --dataset {}".format(adapter.slug),
         "```",
         "",
-        "See `docs/application/persona-fit.md`.",
+        "See `docs/persona/persona-fit.md`.",
         "",
     ]
     return "\n".join(lines)

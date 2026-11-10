@@ -207,6 +207,15 @@ Persona-adherence probes live under `persona/validation/tasks/`, with runners
 and reporting helpers in `persona/validation/scripts/`. For product scenarios
 (survey, chat, web, computer-use), use `../application/tasks/`.
 
+## Persona fit to real people
+
+`persona/persona_fit/` turns public datasets of real decisions (a long US
+survey, two conjoint experiments, MovieLens ratings, Danish news clicks) into
+survey tasks. Each real person becomes a persona, answers the items that person
+actually saw, and is scored against what the person really did. See
+[Persona fit](persona-fit.md), the [results so far](persona-fit-results.md),
+and [`handover.md`](../../handover.md) to run it with another model.
+
 ## Grounding Reporting
 
 After a multi-persona Matraix Playground job completes:
@@ -362,6 +371,10 @@ persona/
 ├── validation/                      # Persona-adherence validation probes
 │   ├── tasks/                       # Probe tasks
 │   └── scripts/                     # Matrix runners and reporting helpers
+├── persona_fit/                     # Persona fit to real people: python -m persona.persona_fit
+│   ├── adapters/                    # One adapter per real-decision dataset
+│   ├── tasks/                       # Template task per dataset (one synthetic row)
+│   └── verifier/                    # Scores an answer against the real decision
 ├── scripts/                         # Job generation and persona sampling
 │   ├── generate_dev_personas.py     # Synthetic YAML pool (same generate path as Playground)
 │   └── generate_persona_job.py      # Matraix Playground job YAML from task + pool
@@ -420,6 +433,7 @@ For more details, see READMEs and docstrings under `persona/`.
 | [Playground pools & cohorts](#playground-pools--cohorts) | Dataset vs launch cache vs saved |
 | [Persona pipeline](pipeline.md) | Curation → coreset build |
 | [Validation](validation.md) | Persona-adherence probes |
+| [Persona fit](persona-fit.md) | Personas scored against real people's decisions |
 | [Large-scale runs](../environment/large-scale-runs.md) | Multi-persona jobs |
 | [Quickstart](../quickstart.md) | Run tasks with personas |
 | [Application](../application/README.md) | Product scenarios |

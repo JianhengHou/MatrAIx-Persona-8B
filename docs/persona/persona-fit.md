@@ -47,21 +47,21 @@ treatment.
 
 | Dataset | Task template |
 |---------|---------------|
-| Twin-2K-500 | `application/tasks/survey_persona-fit-twin-2k-500/` |
-| Immigration conjoint | `application/tasks/survey_persona-fit-immigration-conjoint/` |
-| MovieLens 1M | `application/tasks/survey_persona-fit-movielens-1m/` |
-| EB-NeRD | `application/tasks/survey_persona-fit-eb-nerd/` |
-| Bansak asylum conjoint | `application/tasks/survey_persona-fit-bansak-asylum/` |
+| Twin-2K-500 | `persona/persona_fit/tasks/twin-2k-500/` |
+| Immigration conjoint | `persona/persona_fit/tasks/immigration-conjoint/` |
+| MovieLens 1M | `persona/persona_fit/tasks/movielens-1m/` |
+| EB-NeRD | `persona/persona_fit/tasks/eb-nerd/` |
+| Bansak asylum conjoint | `persona/persona_fit/tasks/bansak-asylum/` |
 
 The checked-in task folders are **templates** holding one synthetic example
 row. Real tasks are generated, one per distinct task card, under
-`application/tasks/_generated/persona-fit/<dataset>/` (gitignored, as are the
+`data/persona_fit/tasks/<dataset>/` (gitignored, as are the
 personas, job shards, and `data/persona_fit/`).
 
 ## Run one dataset
 
 ```bash
-pf() { uv run python application/scripts/run_persona_fit.py "$@"; }
+pf() { uv run python -m persona.persona_fit "$@"; }
 pf list                                   # datasets, path, raw files
 pf download --dataset eb-nerd             # direct links; prints steps for gated files
 pf all --dataset eb-nerd                  # prepare + personas + tasks + jobs
@@ -94,7 +94,7 @@ Outputs:
 |------|-------|
 | Decision frame, scored sample | `data/persona_fit/work/<dataset>/` |
 | Personas | `persona/datasets/persona-fit-<dataset>/` |
-| Generated tasks | `application/tasks/_generated/persona-fit/<dataset>/` |
+| Generated tasks | `data/persona_fit/tasks/<dataset>/` |
 | Job shards (`full`; `none` with `--with-control`) | `configs/jobs/persona-fit/<dataset>/<mode>/` |
 | Trials | `jobs/pf-<dataset>-<mode>-NNNN/` |
 | Metrics, predictions | `data/persona_fit/results/<dataset>/score.{json,md}`, `predictions.csv` |
@@ -106,7 +106,7 @@ a block where all pairs are real decisions: one shard per person with all of
 that person's own cards. `persona-json-survey`
 reads the trial's own task from Harbor's `config.json`, so one job can hold
 many different cards. The verifier (`tests/test_state.py`, a copy of
-`application/persona_fit/verifier/ground_truth.py`) reads the persona id from
+`persona/persona_fit/verifier/ground_truth.py`) reads the persona id from
 `/app/input/persona.yaml`, looks up that person's decision, and writes
 `reward.txt` (1/0 for choices, `1 - |error| / range` for ratings) plus
 `structured_output.json`. Persona-free shards export
@@ -140,13 +140,13 @@ derived from these files under the gitignored paths above.
 
 ## Add a dataset
 
-1. Add an adapter under `application/persona_fit/adapters/` (subclass
+1. Add an adapter under `persona/persona_fit/adapters/` (subclass
    `DatasetAdapter`): `load` returns one row per decision with `row_id`,
    `person_id`, `outcome` (plus `cluster_id`, `arm`, `weight` when relevant);
    declare `persona_fields`, `card_fields`, `leakage_fields`,
    `overlay_dimensions`, `persona`, `card`, and synthetic `example_rows`.
-2. Register it in `application/persona_fit/registry.py`.
-3. `run_persona_fit.py templates --dataset <slug>` writes the template task.
-4. `tests/unit/application/test_persona_fit.py` checks that leakage columns
+2. Register it in `persona/persona_fit/registry.py`.
+3. `python -m persona.persona_fit templates --dataset <slug>` writes the template task.
+4. `tests/persona/test_persona_fit.py` checks that leakage columns
    never reach the persona or the card, that overlays are declared and
    dataset-scoped, and that the template is in sync.

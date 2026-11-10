@@ -7,9 +7,9 @@ against what the person really did. You bring a model and an API key; the rest
 is fixed.
 
 Reference numbers from GLM 5.3, and what they mean, are in
-[`docs/application/persona-fit-results.md`](docs/application/persona-fit-results.md).
+[`docs/persona/persona-fit-results.md`](docs/persona/persona-fit-results.md).
 Pipeline internals are in
-[`docs/application/persona-fit.md`](docs/application/persona-fit.md).
+[`docs/persona/persona-fit.md`](docs/persona/persona-fit.md).
 
 ## 1. Install
 
@@ -25,7 +25,7 @@ Use Python 3.12. With Python 3.15 some dependencies have no prebuilt wheel and
 Every command below goes through one shell function. Define it once per shell:
 
 ```bash
-pf() { uv run python application/scripts/run_persona_fit.py "$@"; }
+pf() { uv run python -m persona.persona_fit "$@"; }
 ```
 
 A plain variable (`PF="uv run ..."; $PF list`) does not work in zsh, the macOS

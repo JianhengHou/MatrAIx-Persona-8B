@@ -2,7 +2,7 @@
 
 Template task for one persona-fit dataset. The files here hold a single
 synthetic example row so the oracle and contract tests can run. Real tasks (one per
-distinct task card) are generated under `application/tasks/_generated/persona-fit/eb-nerd`.
+distinct task card) are generated under `data/persona_fit/tasks/eb-nerd`.
 
 - Persona: stable identity of the real person (`persona/datasets/persona-fit-eb-nerd`).
 - Task card: `input/context.md` + `input/questionnaire.yaml` (the situation they saw).
@@ -13,9 +13,9 @@ Decision type: `binary`.
 ## Run
 
 ```bash
-uv run python application/scripts/run_persona_fit.py all --dataset eb-nerd
-uv run python application/scripts/run_persona_fit.py run --dataset eb-nerd --mode full
-uv run python application/scripts/run_persona_fit.py score --dataset eb-nerd
+uv run python -m persona.persona_fit all --dataset eb-nerd
+uv run python -m persona.persona_fit run --dataset eb-nerd --mode full
+uv run python -m persona.persona_fit score --dataset eb-nerd
 ```
 
-See `docs/application/persona-fit.md`.
+See `docs/persona/persona-fit.md`.

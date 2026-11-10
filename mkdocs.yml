@@ -43,11 +43,11 @@ nav:
       - Overview: persona/README.md
       - Pipeline: persona/pipeline.md
       - Validation: persona/validation.md
+      - Persona fit: persona/persona-fit.md
+      - Persona fit results: persona/persona-fit-results.md
   - Application:
       - Overview: application/README.md
       - Task guide: application/task-guide.md
-      - Persona-fit datasets: application/persona-fit.md
-      - Persona-fit results: application/persona-fit-results.md
       - Playground API: application/playground-api.md
   - Environment:
       - Overview: environment/README.md

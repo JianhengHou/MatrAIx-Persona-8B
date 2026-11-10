@@ -20,7 +20,7 @@ def get_adapter(slug: str) -> DatasetAdapter:
     if slug not in ADAPTERS:
         raise KeyError("unknown dataset {!r}; choose from {}".format(slug, ", ".join(ADAPTERS)))
     module_name, class_name = ADAPTERS[slug]
-    module = importlib.import_module("persona_fit.adapters.{}".format(module_name))
+    module = importlib.import_module(".adapters.{}".format(module_name), __package__)
     return getattr(module, class_name)()
 
 

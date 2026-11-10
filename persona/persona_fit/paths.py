@@ -13,8 +13,10 @@ WORK_ROOT = DATA_ROOT / "work"
 RESULTS_ROOT = DATA_ROOT / "results"
 
 PERSONA_ROOT = REPO_ROOT / "persona" / "datasets"
-APP_TASK_TEMPLATES = REPO_ROOT / "application" / "tasks"
-APP_GENERATED_ROOT = REPO_ROOT / "application" / "tasks" / "_generated" / "persona-fit"
+TASK_TEMPLATES = PACKAGE_DIR / "tasks"
+# Generated tasks carry each person's real answer in tests/labels.json, so they
+# stay with the other licensed derivatives under the gitignored data root.
+GENERATED_TASKS = DATA_ROOT / "tasks"
 JOBS_ROOT = REPO_ROOT / "configs" / "jobs" / "persona-fit"
 
 VERIFIER_SOURCE = PACKAGE_DIR / "verifier" / "ground_truth.py"
