@@ -139,16 +139,56 @@ What the model has to support:
   `LLM_REQUEST_TIMEOUT_SECONDS=600` for slow or reasoning models; one Twin-2K
   trial took 534 seconds on GLM.
 
-Smoke test before a full run, two people on the smallest dataset:
+### Model families to run
+
+The families planned for comparison are Anthropic (Claude), Google (Gemini),
+OpenAI (GPT), Z.ai (GLM), Moonshot (Kimi K3), DeepSeek and xAI (Grok). Each
+has a route that needs no code change. Take the exact model id from your
+provider's model list; ids below are only the ones checked here.
+
+| Family | Recommended `--model` | Checked here (Nov 2026) | Notes |
+|--------|-----------------------|--------------------------|-------|
+| Anthropic | `anthropic/<id>` | Not run, no key | Native Messages API, not JSON mode: the prompt asks for JSON only. Output capped at 16,384 tokens. Temperature is left out only for ids matching `opus-4-7` and later 4.x; any other id, including a newer naming such as `opus-5`, is sent 0.7. If the API rejects that, the smoke test shows it. |
+| Gemini | `gemini/<id>` | Not run, no key | Google's OpenAI-compatible endpoint, with JSON mode. `google/<id>` is the same route. |
+| OpenAI | `openai/<id>`, e.g. `openai/gpt-6-sol` | Request reached OpenAI and the id was accepted; the test account had no credit, so no answers | No temperature is sent to `gpt-5*` and `gpt-6*`. The o-series (`o3`, `o4`) also rejects a custom temperature, and the code does not yet omit it for them, so they fail until it does. |
+| GLM | `zai/glm-5.3` | Reference run, all five datasets | `zai/` is special-cased: 65,536 output tokens, thinking on at low effort. The same model through `dashscope/` or `openrouter/` gets neither setting; that route was not tested. |
+| Kimi K3 | `dashscope/kimi-k3` | Request reached DashScope and the id was accepted; the test account's free quota was used up, so no answers | Alibaba DashScope hosts it. Moonshot's own API or OpenRouter also work through `openai/` with `OPENAI_BASE_URL`, or `openrouter/<id>`. |
+| DeepSeek | `dashscope/deepseek-v4-pro` or `deepseek/<id>` | `dashscope/deepseek-v4-pro` ran Immigration and Twin-2K end to end | It reasons before answering: about 5.7k output tokens on one Twin-2K trial against GLM's 1.1k. Budget output cost accordingly. |
+| Grok | `xai/<id>` | Not run, no key | xAI's OpenAI-compatible endpoint. |
+
+To keep the comparison fair:
+
+- **Record the route, not just the model.** The same model hosted by two
+  providers can differ in quantization, defaults and context. Report
+  `dashscope/kimi-k3`, not "Kimi K3".
+- **Temperature is not identical across families.** Every model is sent 0.7
+  except `gpt-5*`, `gpt-6*` and Claude `opus-4-7` and later 4.x, which run at
+  their provider's default. Say so when comparing.
+- **One model per shell.** `OPENAI_BASE_URL` is global. If Kimi goes through
+  `openai/` with Moonshot's URL, run OpenAI models in a different shell or
+  clone.
+- **Out of credit looks like a failed run.** A quota or billing error fails
+  every trial with an exception. If `run` ends with many failures, read one
+  `jobs/pf-*/*/exception.txt` before rerunning.
+
+### Smoke test
+
+Before a full run, two people on the smallest dataset and one on the largest
+output:
 
 ```bash
 pf all --dataset immigration-conjoint --sample-rows 2 --model <your model> --max-agents 1 --concurrent 1
 pf run --dataset immigration-conjoint --mode full --parallel 2
 pf score --dataset immigration-conjoint
+
+pf all --dataset twin-2k-500 --sample-rows 1 --model <your model> --max-agents 1 --concurrent 1
+pf run --dataset twin-2k-500 --mode full --parallel 1
 ```
 
-You should see two `Rewards:` lines and a score table with `Valid answers` 10.
-This is not the standard sample. Remove it before the real run (section 7).
+You should see `Rewards:` lines and, for Immigration, a score table with
+`Valid answers` 10. The Twin-2K trial checks that about 84 answers fit in the
+model's output. This is not the standard sample. Remove it before the real
+run (section 7).
 
 ## 4. The fixed sample
 
